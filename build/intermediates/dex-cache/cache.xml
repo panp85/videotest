@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items version="2" >
+
+    <item
+        is-multidex="false"
+        jar="F:\android project\opencv\videotest\videotest\libs\android-support-v4.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.1"
+        sha1="48c94ae70fa65718b382098237806a5909bb096e">
+        <dex dex="F:\android project\opencv\videotest\videotest\build\intermediates\pre-dexed\debug\android-support-v4_86691aa7ea86ac9eca7c44baee433a31ad34c22a.jar" />
+    </item>
+
+</items>
