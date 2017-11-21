@@ -86,15 +86,27 @@ public class VideoTest extends Activity implements Callback, Runnable{
 		try {
 			lss = new LocalServerSocket("H264");
 			receiver = new LocalSocket();
-			
+
+			Runnable networkTask = new Runnable() {
+				@Override
+				public void run() {
+					try {
+						sender = lss.accept();
+
+						sender.setReceiveBufferSize(500000);
+						sender.setSendBufferSize(50000);
+					} catch (IOException e) {
+						Log.e(TAG, e.toString());
+						//this.finish();
+						return;
+					}
+				}
+			};
+			new Thread(networkTask).start();
+
 			receiver.connect(new LocalSocketAddress("H264"));
 			receiver.setReceiveBufferSize(500000);
 			receiver.setSendBufferSize(50000);
-			
-			sender = lss.accept();
-			sender.setReceiveBufferSize(500000);
-			sender.setSendBufferSize(50000);
-			
 		} catch (IOException e) {
 			Log.e(TAG, e.toString());
 			this.finish();
@@ -102,7 +114,7 @@ public class VideoTest extends Activity implements Callback, Runnable{
 		}
 		
 	}
-	
+
 	//得到序列参数集SPS和图像参数集PPS,如果已经存储在本地
 	private void getSPSAndPPS(){
 		StartMdatPlace = sharedPreferences.getInt(
