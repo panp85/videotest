@@ -120,39 +120,97 @@ public class VideoTest extends Activity implements Callback, Runnable{
 		StartMdatPlace = sharedPreferences.getInt(
 				String.format("mdata_%d%d.mdat", videoWidth, videoHeight), -1);
 		
-		if(StartMdatPlace != -1) {
+		if(false/*StartMdatPlace != -1*/) {
 			byte[] temp = new byte[100];
 			try {
-				FileInputStream file_in = VideoTest.this.openFileInput(
-						String.format("%d%d.sps", videoWidth,videoHeight));
-				
-				int index = 0;
-				int read=0;
-				while(true)
+				if(h264_pp)
 				{
-					read = file_in.read(temp,index,10);
-					if(read==-1) break;
-					else index += read;
+					FileInputStream file_in = VideoTest.this.openFileInput(
+							String.format("%d%d.sps", videoWidth,videoHeight));
+					
+					int index = 0;
+					int read=0;
+					while(true)
+					{
+						read = file_in.read(temp,index,10);
+						if(read==-1) break;
+						else index += read;
+					}
+					Log.e(TAG, "=====get sps length:"+index);
+					SPS = new byte[index];
+					System.arraycopy(temp, 0, SPS, 0, index);
+					               
+					file_in.close();
+					
+					index =0;
+					//read PPS
+					file_in = VideoTest.this.openFileInput(
+							String.format("%d%d.pps", videoWidth,videoHeight));
+					while(true)
+					{
+						read = file_in.read(temp,index,10);
+						if(read==-1) break;
+						else index+=read;
+					}
+					Log.e(TAG, "==========get pps length:"+index);
+					PPS = new byte[index];
+					System.arraycopy(temp, 0, PPS, 0, index);
 				}
-				Log.e(TAG, "=====get sps length:"+index);
-				SPS = new byte[index];
-				System.arraycopy(temp, 0, SPS, 0, index);
-				               
-				file_in.close();
-				
-				index =0;
-				//read PPS
-				file_in = VideoTest.this.openFileInput(
-						String.format("%d%d.pps", videoWidth,videoHeight));
-				while(true)
+				else if(h265_pp)
 				{
-					read = file_in.read(temp,index,10);
-					if(read==-1) break;
-					else index+=read;
+					//................................sps
+					FileInputStream file_in = VideoTest.this.openFileInput(
+							String.format("%d%d.vps_pp", videoWidth,videoHeight));
+					
+					int index = 0;
+					int read=0;
+					while(true)
+					{
+						read = file_in.read(temp,index,10);
+						if(read==-1) break;
+						else index += read;
+					}
+					Log.e(TAG, "cap ppt, =====get vps length:"+index);
+					SPS = new byte[index];
+					System.arraycopy(temp, 0, SPS, 0, index);
+								   
+					file_in.close();
+
+				    //................................sps
+					file_in = VideoTest.this.openFileInput(
+							String.format("%d%d.sps_pp", videoWidth,videoHeight));
+					
+					index = 0;
+					read=0;
+					while(true)
+					{
+						read = file_in.read(temp,index,10);
+						if(read==-1) break;
+						else index += read;
+					}
+					Log.e(TAG, "cap ppt, =====get sps length:" + index);
+					SPS = new byte[index];
+					System.arraycopy(temp, 0, SPS, 0, index);
+					               
+					file_in.close();
+
+					//..................................pps
+					index = 0;
+					//read PPS
+					file_in = VideoTest.this.openFileInput(
+							String.format("%d%d.pps_pp", videoWidth,videoHeight));
+					while(true)
+					{
+						read = file_in.read(temp,index,10);
+						if(read==-1) break;
+						else index+=read;
+					}
+					Log.e(TAG, "cap ppt, ==========get pps length:"+index);
+					PPS = new byte[index];
+					System.arraycopy(temp, 0, PPS, 0, index);
+
+					file_in.close();
 				}
-				Log.e(TAG, "==========get pps length:"+index);
-				PPS = new byte[index];
-				System.arraycopy(temp, 0, PPS, 0, index);
 			} catch (FileNotFoundException e) {
 				//e.printStackTrace();
 				Log.e(TAG, e.toString());
@@ -172,8 +230,11 @@ public class VideoTest extends Activity implements Callback, Runnable{
 	private int videoWidth = 320;
 	private int videoHeight = 240;
 	private int videoRate = 10;
+	private boolean h264_pp = false;
+	private boolean h265_pp = true;
 	
-	private String fd = "/sdcard/videotest.3gp";
+	//private String fd = "/sdcard/videotest.3gp";
+	private String fd = "/sdcard/videotest.mp4";
 	
 	private boolean initializeVideo(){
 		if(mSurfaceHolder == null) {
@@ -190,10 +251,18 @@ public class VideoTest extends Activity implements Callback, Runnable{
 		
 		mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
 		//mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-		mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+		//mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+		mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
 		mMediaRecorder.setVideoFrameRate(videoRate);
 		mMediaRecorder.setVideoSize(videoWidth, videoHeight);
-		mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+		if(h264_pp)
+		{
+		    mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+		}
+		else
+		{
+		    mMediaRecorder.setVideoEncoder(5);
+		}
 		//mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
 		mMediaRecorder.setPreviewDisplay(mSurfaceHolder.getSurface());
 		mMediaRecorder.setMaxDuration(0);
@@ -209,6 +278,7 @@ public class VideoTest extends Activity implements Callback, Runnable{
 			mMediaRecorder.setOutputFile(sender.getFileDescriptor());
 		}
 
+      //  mMediaRecorder.setOutputFile(sender.getFileDescriptor());
 		try {
 			mMediaRecorder.prepare();
 			mMediaRecorder.start();
@@ -264,12 +334,25 @@ public class VideoTest extends Activity implements Callback, Runnable{
 			dataInput.read(h264frame, 0, StartMdatPlace);
 			
 			try {
-				File file = new File("/sdcard/encoder.h264");
+				File file;
+				if(h264_pp)
+				{
+				   file   = new File("/sdcard/encoder.h264");
+				}
+				else 
+				{
+				    file = new File("/sdcard/encoder.h265");
+				}
 				if (file.exists())
 					file.delete();
 				file_test = new RandomAccessFile(file, "rw");
 			} catch (Exception ex) {
 				Log.v("System.out", ex.toString());
+			}
+			if(h265_pp)
+			{
+	            file_test.write(head);
+				file_test.write(VPS);//write vps
 			}
 			file_test.write(head);
 			file_test.write(SPS);//write sps
@@ -329,6 +412,8 @@ public class VideoTest extends Activity implements Callback, Runnable{
 	//从 fd文件中找到SPS And PPS
 	private byte[] SPS;
 	private byte[] PPS;
+	private byte[] VPS;
+	
 	private int StartMdatPlace = 0;
 	private void findSPSAndPPS() throws Exception{
 		File file = new File(fd);
@@ -341,7 +426,8 @@ public class VideoTest extends Activity implements Callback, Runnable{
 		
 		final byte[] mdat = new byte[]{0x6D,0x64,0x61,0x74};
 		final byte[] avcc = new byte[]{0x61,0x76,0x63,0x43};
-		
+		final byte[] hvcc = new byte[]{0x68,0x76,0x63,0x43};
+		//StartMdatPlace = 0;//add by pp，20171122
 		for(int i=0 ; i<length; i++){
 			if(data[i] == mdat[0] && data[i+1] == mdat[1] && data[i+2] == mdat[2] && data[i+3] == mdat[3]){
 				StartMdatPlace = i+4;//find mdat
@@ -356,52 +442,106 @@ public class VideoTest extends Activity implements Callback, Runnable{
 		editor.commit();
 		
 		for(int i=0 ; i<length; i++){
-			if(data[i] == avcc[0] && data[i+1] == avcc[1] && data[i+2] == avcc[2] && data[i+3] == avcc[3]){
-				int sps_start = i+3+7;//其中i+3指到avcc的c，再加7跳过6位AVCDecoderConfigurationRecord参数
-				
-				//sps length and sps data
-				byte[] sps_3gp = new byte[2];//sps length
-				sps_3gp[1] = data[sps_start];
-				sps_3gp[0] = data[sps_start + 1];
-				int sps_length = bytes2short(sps_3gp);
-				Log.e(TAG, "sps_length :" + sps_length);
-				
-				sps_start += 2;//skip length
-				SPS = new byte[sps_length];
-				System.arraycopy(data, sps_start, SPS, 0, sps_length);
-				for(int si=0;si<sps_length;si++)
-				Log.e(TAG, "==========SPS :" + si + SPS[si]);
-				//save sps
-				FileOutputStream file_out = VideoTest.this.openFileOutput(
-						String.format("%d%d.sps",videoWidth,videoHeight), 
-						Context.MODE_PRIVATE);
-				file_out.write(SPS);
-				file_out.close();
-				
-				//pps length and pps data
-				int pps_start = sps_start + sps_length + 1;
-				byte[] pps_3gp =new byte[2];
-				pps_3gp[1] = data[pps_start];
-				pps_3gp[0] =data[pps_start+1];
-				int pps_length = bytes2short(pps_3gp);
-				Log.e(TAG, "PPS LENGTH:"+pps_length);
-				
-				pps_start+=2;
-				
-				PPS = new byte[pps_length];
-				System.arraycopy(data, pps_start, PPS,0,pps_length);
-				for (int pi =0;pi<pps_length;pi++)
-				   Log.e(TAG, "==========PPS :" +pi + PPS[pi]);
-				
-				//Save PPS
-				file_out = VideoTest.this.openFileOutput(
-						String.format("%d%d.pps",videoWidth,videoHeight),
-						Context.MODE_PRIVATE);
-				file_out.write(PPS);
-				file_out.close();
-				Log.e(TAG, "==========SPS :" + SPS+ ",  PPS :" +PPS);
-				break;
+			if(h264_pp)
+			{
+				if(data[i] == avcc[0] && data[i+1] == avcc[1] && data[i+2] == avcc[2] && data[i+3] == avcc[3]){
+					int sps_start = i+3+7;//其中i+3指到avcc的c，再加7跳过6位AVCDecoderConfigurationRecord参数
+					
+					//sps length and sps data
+					byte[] sps_3gp = new byte[2];//sps length
+					sps_3gp[1] = data[sps_start];
+					sps_3gp[0] = data[sps_start + 1];
+					int sps_length = bytes2short(sps_3gp);
+					Log.e(TAG, "sps_length :" + sps_length);
+					
+					sps_start += 2;//skip length
+					SPS = new byte[sps_length];
+					System.arraycopy(data, sps_start, SPS, 0, sps_length);
+					for(int si=0;si<sps_length;si++)
+					Log.e(TAG, "==========SPS :" + si + SPS[si]);
+					//save sps
+					FileOutputStream file_out = VideoTest.this.openFileOutput(
+							String.format("%d%d.sps",videoWidth,videoHeight), 
+							Context.MODE_PRIVATE);
+					file_out.write(SPS);
+					file_out.close();
+					
+					//pps length and pps data
+					int pps_start = sps_start + sps_length + 1;
+					byte[] pps_3gp =new byte[2];
+					pps_3gp[1] = data[pps_start];
+					pps_3gp[0] =data[pps_start+1];
+					int pps_length = bytes2short(pps_3gp);
+					Log.e(TAG, "PPS LENGTH:"+pps_length);
+					
+					pps_start+=2;
+					
+					PPS = new byte[pps_length];
+					System.arraycopy(data, pps_start, PPS,0,pps_length);
+					for (int pi =0;pi<pps_length;pi++)
+					   Log.e(TAG, "==========PPS :" +pi + PPS[pi]);
+					
+					//Save PPS
+					file_out = VideoTest.this.openFileOutput(
+							String.format("%d%d.pps",videoWidth,videoHeight),
+							Context.MODE_PRIVATE);
+					file_out.write(PPS);
+					file_out.close();
+					Log.e(TAG, "==========SPS :" + SPS+ ",  PPS :" +PPS);
+					break;
+				}
 			}
+			else if(h265_pp)
+			{
+				if(data[i] == hvcc[0] && data[i+1] == hvcc[1] && data[i+2] == hvcc[2] && data[i+3] == hvcc[3]){
+					Log.i(TAG, "findspsandpps ppt, match hvcc ok.");
+					//4: head, 21: , 1:lengthSizeMinusOne, 1: numberOfArrays,1:completeness and nal_unit_type 
+					int sps_start = i+4+21+1+1+1;
+                    
+                    //------------------------------vps
+					sps_start += 2;//numberOfNalUnits
+					int nalUnitLength = (data[sps_start]&0xff)<<8 |     data[sps_start+1];
+					sps_start += 2;//nalUnitLength
+					FileOutputStream file_out_vps = VideoTest.this.openFileOutput(
+											String.format("%d%d.vps_pp",videoWidth,videoHeight), 
+											Context.MODE_PRIVATE);
+					VPS = new byte[nalUnitLength];
+					System.arraycopy(data, sps_start, VPS, 0, nalUnitLength);
+				    file_out_vps.write(VPS);//vps
+				    file_out_vps.close();
+					sps_start += nalUnitLength;
+
+                    //--------------------------------sps
+					sps_start += 1;//completeness and nal_unit_type 
+					sps_start += 2;//numberOfNalUnits
+					nalUnitLength = (data[sps_start]&0xff)<<8 |     data[sps_start+1];;
+					sps_start += 2;//nalUnitLength
+					FileOutputStream file_out_sps = VideoTest.this.openFileOutput(
+											String.format("%d%d.sps_pp",videoWidth,videoHeight), 
+											Context.MODE_PRIVATE);
+					SPS = new byte[nalUnitLength];
+					System.arraycopy(data, sps_start, SPS, 0, nalUnitLength);
+				    file_out_sps.write(SPS);//sps
+				    file_out_sps.close();
+					sps_start += nalUnitLength;
+
+
+					//--------------------------------pps
+					sps_start += 1;//completeness and nal_unit_type 
+					sps_start += 2;//numberOfNalUnits
+					nalUnitLength = (data[sps_start]&0xff)<<8 |     data[sps_start+1];;
+					sps_start += 2;//nalUnitLength
+					FileOutputStream file_out_pps = VideoTest.this.openFileOutput(
+											String.format("%d%d.pps_pp",videoWidth,videoHeight), 
+											Context.MODE_PRIVATE);
+					PPS = new byte[nalUnitLength];
+					System.arraycopy(data, sps_start, PPS, 0, nalUnitLength);
+					file_out_pps.write(PPS);//pps
+					file_out_pps.close();
+					
+				}
+			}
+				 
 		}
 		
 	}
